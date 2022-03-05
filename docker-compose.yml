@@ -1,0 +1,8 @@
+version: '3.4'
+services:
+  app:
+    build: .
+    volumes:
+      - .:/usr/src/app
+      - $HOME/.aws:/root/.aws
+    tty: true
