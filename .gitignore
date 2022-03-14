@@ -16,3 +16,5 @@
 
 # golang output binary directory
 bin
+
+*.log
