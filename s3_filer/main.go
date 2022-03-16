@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,18 +23,41 @@ import (
 type Node struct {
 	Name         string
 	Bucket       string
-	IsBucket     bool
 	Timestamp    string
 	Prefix       string
 	StorageClass string
 	Size         string
-	IsPrefix     bool
 }
 
-type ViewviewModel struct {
+func (x Node) IsBucket() bool {
+	return x.Name == x.Bucket
+}
+
+func (x Node) IsPrefix() bool {
+	return strings.HasSuffix(x.Prefix, x.Name)
+}
+
+func (x Node) GetParent() Node {
+	parentPrefix := path.Dir(strings.TrimSuffix(x.Prefix, "/")) + "/"
+	name := path.Base(parentPrefix) + "/"
+	if parentPrefix == "./" {
+		parentPrefix = ""
+		name = x.Bucket
+	}
+
+	return Node{
+		Bucket:    x.Bucket,
+		Name:      name,
+		Prefix:    parentPrefix,
+		Timestamp: "                    ", // dummy string to keep width
+	}
+}
+
+type ViewModel struct {
 	Buckets       []Node
 	Nodes         []Node
 	FilteredNodes []Node
+	CurrentNode   Node
 }
 
 func main() {
@@ -42,7 +66,7 @@ func main() {
 
 	client := buildClient()
 
-	viewModel := new(ViewviewModel)
+	viewModel := new(ViewModel)
 	viewModel.Buckets = GetAllBuckets(client)
 	viewModel.Nodes = viewModel.Buckets
 	viewModel.FilteredNodes = viewModel.Nodes
@@ -58,17 +82,49 @@ func main() {
 	pathField := makePathField()
 
 	table.SetSelectedFunc(func(row, column int) {
-		log.Println("row", row, ", node", viewModel.FilteredNodes[row])
-
 		node := viewModel.FilteredNodes[row]
-		if node.IsBucket || node.IsPrefix {
+		log.Println("row", row, ", node", node)
+
+		if node.IsBucket() || node.IsPrefix() {
 			inputField.SetText("")
 			pathField.SetText(fmt.Sprintf("%s/%s", node.Bucket, node.Prefix))
 
+			viewModel.CurrentNode = node
 			viewModel.Nodes = getObjects(client, node, table)
 			viewModel.FilteredNodes = viewModel.Nodes
 			updateTable(table, viewModel.FilteredNodes)
 		}
+	})
+
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		// case tcell.KeyTab:
+		// 	return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'p': // Go parent directory
+				node := viewModel.CurrentNode.GetParent()
+				log.Println("parent ", node)
+
+				if node.IsBucket() {
+					viewModel.Nodes = viewModel.Buckets
+				} else if node.IsPrefix() {
+					viewModel.Nodes = getObjects(client, node, table)
+				} else {
+					return nil
+				}
+
+				viewModel.CurrentNode = node
+				viewModel.FilteredNodes = viewModel.Nodes
+				updateTable(table, viewModel.FilteredNodes)
+
+				inputField.SetText("")
+				pathField.SetText(fmt.Sprintf("%s/%s", node.Bucket, node.Prefix))
+
+				return nil
+			}
+		}
+		return event
 	})
 
 	setInputCaptureOnApp(app, table, inputField)
@@ -128,9 +184,6 @@ func updateTable(table *tview.Table, nodes []Node) {
 			table.SetCell(r, c, tview.NewTableCell(val))
 		}
 	}
-	//
-	// STANDARD
-	// DEEP_ARCHIVE
 	table.ScrollToBeginning()
 }
 
@@ -153,8 +206,6 @@ func getObjects(client *s3.Client, node Node, table *tview.Table) []Node {
 			Bucket:    node.Bucket,
 			Name:      strings.Replace(prefix, node.Prefix, "", 1),
 			Prefix:    prefix,
-			IsBucket:  false,
-			IsPrefix:  true,
 			Timestamp: "                    ", // dummy string to keep width
 		}
 		nodes = append(nodes, node)
@@ -165,8 +216,6 @@ func getObjects(client *s3.Client, node Node, table *tview.Table) []Node {
 			Bucket:       node.Bucket,
 			Name:         strings.Replace(aws.ToString(x.Key), node.Prefix, "", 1),
 			Prefix:       node.Prefix,
-			IsBucket:     false,
-			IsPrefix:     false,
 			Timestamp:    x.LastModified.Format(time.RFC3339),
 			Size:         strconv.FormatInt(x.Size, 10),
 			StorageClass: string(x.StorageClass),
@@ -188,8 +237,6 @@ func GetAllBuckets(client *s3.Client) []Node {
 		node := Node{
 			Bucket:    aws.ToString(x.Name),
 			Name:      aws.ToString(x.Name),
-			IsBucket:  true,
-			IsPrefix:  false,
 			Timestamp: x.CreationDate.Format(time.RFC3339),
 		}
 		nodes = append(nodes, node)
@@ -214,7 +261,7 @@ func buildClient() *s3.Client {
 	return s3.NewFromConfig(cfg)
 }
 
-func makeFilterField(app *tview.Application, table *tview.Table, viewModel *ViewviewModel) *tview.InputField {
+func makeFilterField(app *tview.Application, table *tview.Table, viewModel *ViewModel) *tview.InputField {
 	inputField := tview.NewInputField()
 	inputField.SetLabel("filter: ")
 	inputField.SetBorder(true)
