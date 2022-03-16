@@ -11,3 +11,6 @@ clean:
 run:
 	docker-compose run --rm app make build
 	bin/s3_filer
+
+test:
+	go test -v s3_filer/*.go
