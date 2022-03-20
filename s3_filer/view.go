@@ -28,7 +28,7 @@ func NewView(viewmodel *ViewModel) *View {
 
 	view.SetTableToSetSelectedFunc()
 	view.SetTableToSetInputCapture()
-	// view.setInputCaptureOnApp()
+	view.setInputCaptureOnApp()
 
 	return view
 }
@@ -54,7 +54,11 @@ func newPathField() *tview.InputField {
 func (self *View) Run() error {
 	self.update()
 	layout := self.makeLayout()
-	return self.app.SetRoot(layout, true).Run()
+	err := self.app.SetRoot(layout, true).Run()
+	if err != nil {
+		self.viewModel.Save()
+	}
+	return err
 }
 
 func (self *View) makeLayout() tview.Primitive {
@@ -142,35 +146,13 @@ func (self *View) updateTable(nodes []Node) {
 	self.table.ScrollToBeginning()
 }
 
-// func setInputCaptureOnApp(app *tview.Application, table *tview.Table, inputField *tview.InputField) {
-// 	widgets := []tview.Primitive{table, inputField}
-// 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-// 		switch event.Key() {
-// 		case tcell.KeyTab:
-// 			current := app.GetFocus()
-// 			for i, x := range widgets {
-// 				if x == current {
-// 					if i+1 == len(widgets) {
-// 						app.SetFocus(widgets[0])
-// 						break
-// 					} else {
-// 						app.SetFocus(widgets[i+1])
-// 						break
-// 					}
-// 				}
-// 			}
-// 			return nil
-// 		case tcell.KeyRune:
-// 			switch event.Rune() {
-// 			case '/':
-// 				app.SetFocus(inputField)
-// 				return nil
-// 			case 'q':
-// 				app.Stop()
-// 				return nil
-// 			}
-// 		}
-//
-// 		return event
-// 	})
-// }
+func (self *View) setInputCaptureOnApp() {
+	self.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyCtrlC:
+			self.viewModel.Save()
+			self.app.Stop()
+		}
+		return event
+	})
+}

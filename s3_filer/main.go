@@ -17,7 +17,6 @@ func main() {
 	view := NewView(viewModel)
 
 	if err := view.Run(); err != nil {
-		viewModel.Save()
 		panic(err)
 	}
 }

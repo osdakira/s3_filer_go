@@ -148,10 +148,12 @@ func (self *ViewModel) Filter(text string) []Node {
 func (self *ViewModel) Save() error {
 	json, err := json.Marshal(self.CurrentNode)
 	if err != nil {
+		// log.Println(err)
 		return err
 	}
 
 	err = os.WriteFile(SAVE_PATH, json, 0644)
+	// log.Println(err)
 	return err
 }
 
