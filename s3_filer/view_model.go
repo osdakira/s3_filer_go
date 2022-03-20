@@ -67,7 +67,7 @@ func GetAllBuckets(client *s3.Client) []Node {
 }
 
 func (self *ViewModel) GetRootLikeNode() Node {
-	return Node{Bucket: "", Name: ""}
+	return Node{Bucket: ""}
 }
 
 func (self *ViewModel) UpdateCurrentNode(node Node) []Node {

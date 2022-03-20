@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-	"path"
 	"strings"
 )
 
@@ -24,7 +22,7 @@ func (x Node) IsPrefix() bool {
 }
 
 func (x Node) IsRoot() bool {
-	return x.Name == ""
+	return x.Bucket == ""
 }
 
 func (x Node) IsEdge() bool {
@@ -36,19 +34,24 @@ func (x Node) IsLeaf() bool {
 }
 
 func (x Node) GetParent() Node {
-	log.Println("x.Prefix", x.Prefix)
-
-	parentPrefix := path.Dir(strings.TrimSuffix(x.Prefix, "/")) + "/"
-	name := path.Base(parentPrefix) + "/"
-	if parentPrefix == "./" {
-		parentPrefix = ""
-	}
-	log.Println("parentPrefix", parentPrefix)
-
-	return Node{
-		Bucket:    x.Bucket,
-		Name:      name,
-		Prefix:    parentPrefix,
-		Timestamp: "                    ", // dummy string to keep width
+	if x.IsBucket() {
+		return Node{Bucket: ""} // make root node
+	} else {
+		paths := strings.Split(x.Prefix, "/") // Prefix has Trailing Slash. Last item is blank. "a/" => ["a", ""]
+		if len(paths) == 2 {                  // IsBucket
+			return Node{
+				Bucket: x.Bucket,
+				Name:   x.Bucket,
+			}
+		} else {
+			parentPrefix := strings.Join(paths[:len(paths)-2], "/") + "/"
+			name := paths[len(paths)-3] + "/"
+			return Node{
+				Bucket:    x.Bucket,
+				Name:      name,
+				Prefix:    parentPrefix,
+				Timestamp: "                    ", // dummy string to keep width
+			}
+		}
 	}
 }
