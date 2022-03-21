@@ -3,13 +3,13 @@ package main
 import (
 	"log"
 	"os"
+	"runtime"
+	"syscall"
+
+	"github.com/cli/safeexec"
 )
 
 func main() {
-	if err := os.Setenv("LC_CTYPE", "en_US.UTF-8"); err != nil {
-		panic(err)
-	}
-
 	f := setLogger("debug.log")
 	defer f.Close()
 
@@ -28,4 +28,23 @@ func setLogger(path string) *os.File {
 	}
 	log.SetOutput(f)
 	return f
+}
+
+func init() {
+	if os.Getenv("LC_CTYPE") != "en_US.UTF-8" && runtime.GOOS != "windows" {
+		err := os.Setenv("LC_CTYPE", "en_US.UTF-8")
+		if err != nil {
+			panic(err)
+		}
+		env := os.Environ()
+		argv0, err := safeexec.LookPath(os.Args[0])
+		if err != nil {
+			panic(err)
+		}
+		os.Args[0] = argv0
+		/* #nosec G204 */
+		if err := syscall.Exec(argv0, os.Args, env); err != nil {
+			panic(err)
+		}
+	}
 }
