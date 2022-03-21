@@ -86,6 +86,11 @@ func (self *View) SetTableToSetInputCapture() {
 			self.viewModel.CurrentNode = self.viewModel.GetParent()
 			self.update()
 			return nil
+		case tcell.KeyCtrlD:
+			row, _ := self.table.GetSelection()
+			node := self.viewModel.FilteredNodes[row]
+			self.viewModel.Download(node)
+			return nil
 		case tcell.KeyDelete, tcell.KeyBackspace, tcell.KeyBackspace2:
 			text := self.filterField.GetText()
 			if len(text) > 1 {

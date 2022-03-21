@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -23,11 +24,13 @@ type ViewModel struct {
 	FilteredNodes []Node
 	CurrentNode   Node
 	Client        *s3.Client
+	downloader    *manager.Downloader
 }
 
 func NewViewModel() *ViewModel {
 	viewModel := new(ViewModel)
 	viewModel.Client = buildClient()
+	viewModel.downloader = buildDownloader(viewModel.Client)
 	viewModel.Buckets = GetAllBuckets(viewModel.Client)
 
 	node, err := viewModel.Load()
@@ -143,6 +146,30 @@ func (self *ViewModel) Filter(text string) []Node {
 		self.FilteredNodes = newNodes
 	}
 	return self.FilteredNodes
+}
+
+func buildDownloader(client *s3.Client) *manager.Downloader {
+	return manager.NewDownloader(client)
+}
+
+func (self *ViewModel) Download(node Node) {
+	f, err := os.Create(node.Name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	bucketName := node.Bucket
+	objectKey := node.Prefix + node.Name
+	log.Println("bucketName: ", bucketName, " objectKey: ", objectKey)
+
+	_, err = self.downloader.Download(context.Background(), f, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (self *ViewModel) Save() error {
