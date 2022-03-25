@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -15,6 +14,7 @@ type View struct {
 	table       *tview.Table
 	filterField *tview.InputField
 	pathField   *tview.InputField
+	statusBar   *tview.InputField
 }
 
 func NewView(viewmodel *ViewModel) *View {
@@ -25,8 +25,8 @@ func NewView(viewmodel *ViewModel) *View {
 	view.table = newTable()
 	view.filterField = newFilterField()
 	view.pathField = newPathField()
+	view.statusBar = newStatusBar()
 
-	view.SetTableToSetSelectedFunc()
 	view.SetTableToSetInputCapture()
 	view.setInputCaptureOnApp()
 
@@ -51,6 +51,12 @@ func newPathField() *tview.InputField {
 	return f
 }
 
+func newStatusBar() *tview.InputField {
+	f := tview.NewInputField()
+	f.SetFieldBackgroundColor(tcell.ColorBlack)
+	return f
+}
+
 func (self *View) Run() error {
 	self.update()
 	layout := self.makeLayout()
@@ -70,7 +76,8 @@ func (self *View) makeLayout() tview.Primitive {
 	flex := tview.NewFlex()
 	flex.SetDirection(tview.FlexRow).
 		AddItem(head, 3, 0, false).
-		AddItem(self.table, 0, 1, true)
+		AddItem(self.table, 0, 1, true).
+		AddItem(self.statusBar, 1, 0, false)
 
 	return flex
 }
@@ -78,18 +85,31 @@ func (self *View) makeLayout() tview.Primitive {
 func (self *View) SetTableToSetInputCapture() {
 	self.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyEnter, tcell.KeyRight:
+			row, _ := self.table.GetSelection()
+			node := self.viewModel.FilteredNodes[row]
+			if !node.IsLeaf() {
+				self.viewModel.CurrentNode = node
+				self.update()
+			}
+			return nil
 		case tcell.KeyCtrlP: // previous line
 			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
 		case tcell.KeyCtrlN: // next line
 			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
-		case tcell.KeyCtrlU:
+		case tcell.KeyCtrlU, tcell.KeyLeft:
 			self.viewModel.CurrentNode = self.viewModel.GetParent()
 			self.update()
 			return nil
 		case tcell.KeyCtrlD:
 			row, _ := self.table.GetSelection()
 			node := self.viewModel.FilteredNodes[row]
-			self.viewModel.Download(node)
+			message, err := self.viewModel.Download(node)
+			if err != nil {
+				self.statusBar.SetText(fmt.Sprintf("%v", err))
+			} else {
+				self.statusBar.SetText(message)
+			}
 			return nil
 		case tcell.KeyDelete, tcell.KeyBackspace, tcell.KeyBackspace2:
 			text := self.filterField.GetText()
@@ -106,18 +126,6 @@ func (self *View) SetTableToSetInputCapture() {
 			return nil
 		default:
 			return event
-		}
-	})
-}
-
-func (self *View) SetTableToSetSelectedFunc() {
-	self.table.SetSelectedFunc(func(row, column int) {
-		node := self.viewModel.FilteredNodes[row]
-		log.Println("row", row, ", node", node)
-
-		if !node.IsLeaf() {
-			self.viewModel.CurrentNode = node
-			self.update()
 		}
 	})
 }

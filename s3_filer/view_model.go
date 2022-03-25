@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -152,24 +153,25 @@ func buildDownloader(client *s3.Client) *manager.Downloader {
 	return manager.NewDownloader(client)
 }
 
-func (self *ViewModel) Download(node Node) {
+func (self *ViewModel) Download(node Node) (string, error) {
 	f, err := os.Create(node.Name)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	defer f.Close()
 
 	bucketName := node.Bucket
 	objectKey := node.Prefix + node.Name
-	log.Println("bucketName: ", bucketName, " objectKey: ", objectKey)
 
 	_, err = self.downloader.Download(context.Background(), f, &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
 	})
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
+
+	return fmt.Sprintf("Download: s3://%s/%s", bucketName, objectKey), nil
 }
 
 func (self *ViewModel) Save() error {
