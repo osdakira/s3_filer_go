@@ -87,54 +87,72 @@ func (self *View) makeLayout() tview.Primitive {
 
 func (self *View) SetTableToSetInputCapture() {
 	self.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		self.statusBar.SetText("")
+
 		switch event.Key() {
-		case tcell.KeyEnter, tcell.KeyRight:
-			row, _ := self.table.GetSelection()
-			node := self.viewModel.FilteredNodes[row]
-			if !node.IsLeaf() {
-				self.viewModel.CurrentNode = node
-				self.update()
-			}
-			return nil
 		case tcell.KeyCtrlP: // previous line
 			return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
 		case tcell.KeyCtrlN: // next line
 			return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+		case tcell.KeyEnter, tcell.KeyRight:
+			self.intoSelectionNode()
+			return nil
 		case tcell.KeyCtrlU, tcell.KeyLeft:
 			self.viewModel.CurrentNode = self.viewModel.GetParent()
 			self.update()
 			return nil
 		case tcell.KeyCtrlD:
-			row, _ := self.table.GetSelection()
-			node := self.viewModel.FilteredNodes[row]
-			message, err := self.viewModel.Download(node)
-			if err != nil {
-				self.statusBar.SetText(fmt.Sprintf("%v", err))
-			} else {
-				self.statusBar.SetText(message)
-			}
+			self.DownloadNode()
 			return nil
 		case tcell.KeyCtrlH:
 			self.humanReadable = !self.humanReadable
 			self.filter(self.filterField.GetText())
 			return nil
 		case tcell.KeyDelete, tcell.KeyBackspace2:
-			text := self.filterField.GetText()
-			if len(text) > 1 {
-				text = text[:len(text)-1]
-			} else {
-				text = ""
-			}
-			self.filter(text)
+			self.deleteFilterWord()
 			return nil
 		case tcell.KeyRune:
-			text := self.filterField.GetText() + string(event.Rune())
-			self.filter(text)
+			self.addFilterWord(string(event.Rune()))
 			return nil
 		default:
 			return event
 		}
 	})
+}
+
+func (self *View) DownloadNode() {
+	row, _ := self.table.GetSelection()
+	node := self.viewModel.FilteredNodes[row]
+	message, err := self.viewModel.Download(node)
+	if err != nil {
+		self.statusBar.SetText(fmt.Sprintf("%v", err))
+	} else {
+		self.statusBar.SetText(message)
+	}
+}
+
+func (self *View) intoSelectionNode() {
+	row, _ := self.table.GetSelection()
+	node := self.viewModel.FilteredNodes[row]
+	if !node.IsLeaf() {
+		self.viewModel.CurrentNode = node
+		self.update()
+	}
+}
+
+func (self *View) addFilterWord(word string) {
+	text := self.filterField.GetText() + word
+	self.filter(text)
+}
+
+func (self *View) deleteFilterWord() {
+	text := self.filterField.GetText()
+	if len(text) > 1 {
+		text = text[:len(text)-1]
+	} else {
+		text = ""
+	}
+	self.filter(text)
 }
 
 func (self *View) filter(text string) {
