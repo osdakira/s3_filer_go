@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -15,6 +16,8 @@ type View struct {
 	filterField *tview.InputField
 	pathField   *tview.InputField
 	statusBar   *tview.InputField
+
+	humanReadable bool
 }
 
 func NewView(viewmodel *ViewModel) *View {
@@ -111,7 +114,11 @@ func (self *View) SetTableToSetInputCapture() {
 				self.statusBar.SetText(message)
 			}
 			return nil
-		case tcell.KeyDelete, tcell.KeyBackspace, tcell.KeyBackspace2:
+		case tcell.KeyCtrlH:
+			self.humanReadable = !self.humanReadable
+			self.filter(self.filterField.GetText())
+			return nil
+		case tcell.KeyDelete, tcell.KeyBackspace2:
 			text := self.filterField.GetText()
 			if len(text) > 1 {
 				text = text[:len(text)-1]
@@ -150,7 +157,14 @@ func (self *View) updateTable(nodes []Node) {
 	self.table.Clear()
 
 	for r, obj := range nodes {
-		values := []string{obj.Timestamp, obj.Name, obj.Size, obj.StorageClass}
+		size := obj.Size
+		if self.humanReadable {
+			size64, err := strconv.ParseInt(size, 10, 64)
+			if err == nil {
+				size = ByteCountIEC(size64)
+			}
+		}
+		values := []string{obj.Timestamp, obj.Name, size, obj.StorageClass}
 		for c, val := range values {
 			self.table.SetCell(r, c, tview.NewTableCell(val))
 		}
