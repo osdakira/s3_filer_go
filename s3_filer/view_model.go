@@ -194,7 +194,12 @@ func (self *ViewModel) FetchFirst(node Node) (string, error) {
 		return "", err
 	}
 
-	return string(buf), nil
+	str, err := ConvertReadableString(buf)
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
 }
 
 func (self *ViewModel) Save() error {
