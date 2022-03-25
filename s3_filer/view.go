@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
@@ -16,6 +17,8 @@ type View struct {
 	filterField *tview.InputField
 	pathField   *tview.InputField
 	statusBar   *tview.InputField
+	modal       *tview.TextView
+	pages       *tview.Pages
 
 	humanReadable bool
 }
@@ -29,6 +32,7 @@ func NewView(viewmodel *ViewModel) *View {
 	view.filterField = newFilterField()
 	view.pathField = newPathField()
 	view.statusBar = newStatusBar()
+	view.modal = newModal(view)
 
 	view.SetTableToSetInputCapture()
 	view.setInputCaptureOnApp()
@@ -60,6 +64,21 @@ func newStatusBar() *tview.InputField {
 	return f
 }
 
+func newModal(view *View) *tview.TextView {
+	modal := tview.NewTextView()
+	modal.SetBorder(true).SetTitle("View: first 500 bytes")
+	modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEnter, tcell.KeyEsc:
+			view.pages.SwitchToPage("base")
+			return nil
+		default:
+			return event
+		}
+	})
+	return modal
+}
+
 func (self *View) Run() error {
 	self.update()
 	layout := self.makeLayout()
@@ -82,7 +101,12 @@ func (self *View) makeLayout() tview.Primitive {
 		AddItem(self.table, 0, 1, true).
 		AddItem(self.statusBar, 1, 0, false)
 
-	return flex
+	self.pages = tview.NewPages().
+		AddPage("modal", self.modal, true, true).
+		AddPage("base", flex, true, true)
+		// AddPage(name string, item Primitive, resize, visible bool)
+
+	return self.pages
 }
 
 func (self *View) SetTableToSetInputCapture() {
@@ -133,8 +157,19 @@ func (self *View) DownloadNode() {
 
 func (self *View) intoSelectionNode() {
 	row, _ := self.table.GetSelection()
+	if row >= len(self.viewModel.FilteredNodes) {
+		return
+	}
+
 	node := self.viewModel.FilteredNodes[row]
-	if !node.IsLeaf() {
+	if node.IsLeaf() {
+		text, err := self.viewModel.FetchFirst(node)
+		if err != nil {
+			log.Println(err)
+		}
+		self.modal.SetText(text)
+		self.pages.SwitchToPage("modal")
+	} else {
 		self.viewModel.CurrentNode = node
 		self.update()
 	}

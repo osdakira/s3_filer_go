@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
@@ -172,6 +173,28 @@ func (self *ViewModel) Download(node Node) (string, error) {
 	}
 
 	return fmt.Sprintf("Download: s3://%s/%s", bucketName, objectKey), nil
+}
+
+func (self *ViewModel) FetchFirst(node Node) (string, error) {
+	bucketName := node.Bucket
+	objectKey := node.Prefix + node.Name
+
+	resp, err := self.Client.GetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	buf := make([]byte, 500)
+	_, err = resp.Body.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+
+	return string(buf), nil
 }
 
 func (self *ViewModel) Save() error {
