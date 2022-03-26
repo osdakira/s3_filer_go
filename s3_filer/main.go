@@ -1,16 +1,16 @@
 package main
 
-// These variables are set in build step
-var (
-	version  = "1.0.0"
-)
-
 import (
 	"os"
 	"runtime"
 	"syscall"
 
 	"github.com/cli/safeexec"
+)
+
+// These variables are set in build step
+var (
+	version = "1.0.0"
 )
 
 func main() {
