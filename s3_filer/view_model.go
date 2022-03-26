@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -37,7 +36,6 @@ func NewViewModel() *ViewModel {
 
 	node, err := viewModel.Load()
 	if err != nil {
-		log.Println(err)
 		node = viewModel.GetRootLikeNode()
 	}
 
@@ -154,29 +152,21 @@ func buildDownloader(client *s3.Client) *manager.Downloader {
 	return manager.NewDownloader(client)
 }
 
-func (self *ViewModel) Download(node Node) (string, error) {
+func (self *ViewModel) Download(node Node) error {
 	f, err := os.Create(node.Name)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer f.Close()
 
-	bucketName := node.Bucket
-	objectKey := node.Prefix + node.Name
-
 	_, err = self.downloader.Download(context.Background(), f, &s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
+		Bucket: aws.String(node.Bucket),
+		Key:    aws.String(node.Prefix + node.Name),
 	})
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("Download: s3://%s/%s", bucketName, objectKey), nil
+	return err
 }
 
 func (self *ViewModel) FetchFirst(node Node) (string, error) {
-	log.Println("node", node)
 	buf, err := self.GetObjectFromS3(node, "bytes=0-500")
 	if err != nil {
 		return string(buf), err
@@ -211,20 +201,19 @@ func (self *ViewModel) GetObjectFromS3(node Node, byteRange string) ([]byte, err
 		Key:    aws.String(node.Prefix + node.Name),
 	}
 	if byteRange != "" {
-		log.Println(byteRange)
 		input.Range = aws.String(byteRange)
 	}
 
 	resp, err := self.Client.GetObject(context.TODO(), &input)
 	if err != nil {
-		log.Println("err1", err)
+		Debug("GetObject err", err)
 		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("err2", err)
+		Debug("GetObject ReadAll err", err)
 		return []byte{}, err
 	}
 
@@ -234,12 +223,10 @@ func (self *ViewModel) GetObjectFromS3(node Node, byteRange string) ([]byte, err
 func (self *ViewModel) Save() error {
 	json, err := json.Marshal(self.CurrentNode)
 	if err != nil {
-		// log.Println(err)
 		return err
 	}
 
 	err = os.WriteFile(SAVE_PATH, json, 0644)
-	// log.Println(err)
 	return err
 }
 

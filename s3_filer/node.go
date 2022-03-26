@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -54,4 +55,8 @@ func (x Node) GetParent() Node {
 			}
 		}
 	}
+}
+
+func (x Node) GetS3Path() string {
+	return fmt.Sprintf("s3://%s/%s%s", x.Bucket, x.Prefix, x.Name)
 }

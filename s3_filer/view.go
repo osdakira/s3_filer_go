@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 
 	"github.com/gdamore/tcell/v2"
@@ -147,11 +146,14 @@ func (self *View) SetTableToSetInputCapture() {
 func (self *View) DownloadNode() {
 	row, _ := self.table.GetSelection()
 	node := self.viewModel.FilteredNodes[row]
-	message, err := self.viewModel.Download(node)
+	// Debug("node", node.GetS3Path())
+	self.statusBar.SetText(fmt.Sprintf("Downloading... %s", node.GetS3Path()))
+
+	err := self.viewModel.Download(node)
 	if err != nil {
 		self.statusBar.SetText(fmt.Sprintf("%v", err))
 	} else {
-		self.statusBar.SetText(message)
+		self.statusBar.SetText(fmt.Sprintf("Download Complete: %s", node.GetS3Path()))
 	}
 }
 
@@ -165,7 +167,7 @@ func (self *View) intoSelectionNode() {
 	if node.IsLeaf() {
 		text, err := self.viewModel.FetchFirst(node)
 		if err != nil {
-			log.Println(err)
+			Debug(err)
 		}
 		self.modal.SetText(text)
 		self.pages.SwitchToPage("modal")
