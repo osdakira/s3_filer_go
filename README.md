@@ -9,6 +9,10 @@ TUI tool to view S3.
 - View S3 files without downloading the first part of `ascii text`, `gzip`, or `parquet` (like the head command)
     - `parquet` downloads everything, so it may take longer for large files.
 
+## Install
+
+You can download binary from [release page](https://github.com/osdakira/s3_filer_go/releases) and place it in $PATH directory.
+
 ## Usage
 
 Use Ctrl key to function.
