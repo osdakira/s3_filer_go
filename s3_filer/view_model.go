@@ -176,30 +176,59 @@ func (self *ViewModel) Download(node Node) (string, error) {
 }
 
 func (self *ViewModel) FetchFirst(node Node) (string, error) {
-	bucketName := node.Bucket
-	objectKey := node.Prefix + node.Name
-
-	resp, err := self.Client.GetObject(context.TODO(), &s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
-	})
+	log.Println("node", node)
+	buf, err := self.GetObjectFromS3(node, "bytes=0-500")
 	if err != nil {
-		return "", err
+		return string(buf), err
+	}
+
+	ftype, err := GuessFileType(buf)
+	if err != nil {
+		return ftype, err
+	}
+
+	switch {
+	case strings.Contains(ftype, "ASCII text"):
+		return string(buf), nil
+	case strings.Contains(ftype, "gzip"):
+		return ReadGzip(buf)
+	case strings.Contains(ftype, "Apache Parquet"):
+		buf2, err := self.GetObjectFromS3(node, "")
+		if err != nil {
+			return "", err
+		}
+		return ReadParquet(buf2)
+	default:
+		return "Binary file not shown", nil
+	}
+
+	return string(buf), nil
+}
+
+func (self *ViewModel) GetObjectFromS3(node Node, byteRange string) ([]byte, error) {
+	input := s3.GetObjectInput{
+		Bucket: aws.String(node.Bucket),
+		Key:    aws.String(node.Prefix + node.Name),
+	}
+	if byteRange != "" {
+		log.Println(byteRange)
+		input.Range = aws.String(byteRange)
+	}
+
+	resp, err := self.Client.GetObject(context.TODO(), &input)
+	if err != nil {
+		log.Println("err1", err)
+		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
-	buf := make([]byte, 500)
-	_, err = resp.Body.Read(buf)
-	if err != nil && err != io.EOF {
-		return "", err
-	}
-
-	str, err := ConvertReadableString(buf)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		log.Println("err2", err)
+		return []byte{}, err
 	}
 
-	return str, nil
+	return buf, nil
 }
 
 func (self *ViewModel) Save() error {
