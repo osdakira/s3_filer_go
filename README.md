@@ -8,10 +8,18 @@ TUI tool to view S3.
 - Filters paths for easier access.
 - View S3 files without downloading the first part of `ascii text`, `gzip`, or `parquet` (like the head command)
     - `parquet` downloads everything, so it may take longer for large files.
+    - You need the `file` command to determine the file format; must be able to determine `parquet`.
 
 ## Install
 
 1. You can download binary from [release page](https://github.com/osdakira/s3_filer_go/releases) and place it in $PATH directory.
+
+If you want to download linux v1.0.0 using curl, run
+
+```
+curl -sSL https://github.com/osdakira/s3_filer_go/releases/download/v1.0.0/s3_filer_linux_amd64.tar.gz | tar zxvf - s3_filer
+```
+
 2. You will need to set up your configurations and credentials just as you would with awscli.
 
 ```
