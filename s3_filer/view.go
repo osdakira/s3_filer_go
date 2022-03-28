@@ -231,7 +231,7 @@ func (self *View) updateTable(nodes []Node) {
 func (self *View) setInputCaptureOnApp() {
 	self.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
-		case tcell.KeyCtrlC:
+		case tcell.KeyCtrlQ:
 			self.viewModel.Save()
 			self.app.Stop()
 		}

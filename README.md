@@ -11,11 +11,29 @@ TUI tool to view S3.
 
 ## Install
 
-You can download binary from [release page](https://github.com/osdakira/s3_filer_go/releases) and place it in $PATH directory.
+1. You can download binary from [release page](https://github.com/osdakira/s3_filer_go/releases) and place it in $PATH directory.
+2. You will need to set up your configurations and credentials just as you would with awscli.
+
+```
+$ aws configure
+```
 
 ## Usage
 
-Use Ctrl key to function.
+Run the command.
+
+```
+$ s3_filer
+```
+
+If the token is shown as expired at that time, please reacquire the token.
+
+```
+$ s3_filer
+2022/03/28 09:16:18 operation error S3: ListBuckets, https response error StatusCode: 400, RequestID: ..., HostID: ..., api error ExpiredToken: The provided token has expired.
+```
+
+When the screen appears, the following commands can be executed.
 
 - Ctrl+P: select (P)previous item
 - Ctrl+N: select (N)ext item
@@ -25,6 +43,7 @@ Use Ctrl key to function.
     - file: Display the first 500 KB of the file
 - Ctrl+D: (D)ownload file
 - Ctrl+H: toggle file size to (H)uman readable
+- Ctrl+Q: (Q)uit application with save the path
 
 - cursor movement keys:
     - KeyUp: select (P)previous item
@@ -37,7 +56,8 @@ Use Ctrl key to function.
 ```
 $ docker-compose run --rm app
 Creating s3_filer_go_app_run ... done
-root@36e0ffe445ad:/usr/src/app# make build
+
+# make build
 export GO111MODULE=on
 env GOOS=linux go build -ldflags="-s -w" -o bin/s3_filer s3_filer/*.go
 ```
